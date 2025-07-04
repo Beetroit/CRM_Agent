@@ -10,13 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Dependency for RabbitMQ Producer
 async def get_rabbitmq_producer() -> AsyncRabbitMQProducer:
-    producer = AsyncRabbitMQProducer(
-        hostname=settings.RABBITMQ_HOST,
-        port=settings.RABBITMQ_PORT,
-        username=settings.RABBITMQ_USER,
-        password=settings.RABBITMQ_PASSWORD,
-        queue_name=settings.RABBITMQ_QUEUE_NAME,
-    )
+    producer = AsyncRabbitMQProducer()
     return producer
 
 
