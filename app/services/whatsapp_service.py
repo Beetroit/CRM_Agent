@@ -6,13 +6,19 @@ from urllib.parse import parse_qs, unquote
 
 from app.models.whatsapp import WhatsAppQueueMessage
 from app.services.rabbitmq_service import AsyncRabbitMQProducer
+from app.services.vector_store_service import VectorStoreService
 
 logger = logging.getLogger(__name__)
 
 
 class WhatsAppService:
-    def __init__(self, rabbitmq_producer: AsyncRabbitMQProducer):
+    def __init__(
+        self,
+        rabbitmq_producer: AsyncRabbitMQProducer,
+        vector_store_service: VectorStoreService,
+    ):
         self.rabbitmq_producer = rabbitmq_producer
+        self.vector_store_service = vector_store_service
 
     @staticmethod
     def parse_webhook_data(raw_data: bytes) -> Dict[str, Any]:
@@ -158,6 +164,16 @@ class WhatsAppService:
 
                 logger.info(
                     f"Message queued successfully: {message_info['message_sid']}"
+                )
+
+                # Add message to vector store
+                await self.vector_store_service.add_message(
+                    message_id=message_info["message_sid"],
+                    content=message_info["body"],
+                    metadata=message_info,
+                )
+                logger.info(
+                    f"Message '{message_info['message_sid']}' added to vector store."
                 )
 
             elif webhook_type == "status":
