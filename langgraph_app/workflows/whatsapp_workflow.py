@@ -3,6 +3,7 @@ import logging
 from typing import Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
+from rich import print
 
 from langgraph_app.services.llm_service import LLMService
 from langgraph_app.services.vector_store_service import VectorStoreService
@@ -39,7 +40,17 @@ def create_whatsapp_workflow(
         logger.info("Retrieving context...")
         if state["intent"] == "query":
             context_docs = vector_store_service.query_messages(state["user_input"])
-            state["context"] = "\n".join([doc["content"] for doc in context_docs])
+            print(f"Retrieved context documents: {context_docs}")
+            # Join the document content, ensuring robust checking for valid docs
+            context_parts = [
+                doc
+                for doc in context_docs
+                if isinstance(doc, str)
+            ]
+            if context_parts:
+                state["context"] = "\n".join(context_parts)
+            else:
+                state["context"] = "No available context"
         else:
             state["context"] = None
         return state
@@ -54,14 +65,18 @@ def create_whatsapp_workflow(
         state["generated_response"] = response
         return state
 
-    async def send_response_node(state: WorkflowState):
+    async def send_response_node(state: WorkflowState) -> None:
+        """
+        Sends the generated response back to the user via the WhatsAppResponseTool.
+        This node does not modify the state and returns None.
+        """
         logger.info("Sending response...")
         await whatsapp_response_tool.publish_message(
             to_number=state["from_number"],
             response_text=state["generated_response"],
             original_message_sid=state["message_id"],
         )
-        return END
+        return state
 
     workflow = StateGraph(WorkflowState)
     workflow.add_node("start", start_node)
@@ -75,5 +90,6 @@ def create_whatsapp_workflow(
     workflow.add_edge("classify_intent", "context_retrieval")
     workflow.add_edge("context_retrieval", "generate_response")
     workflow.add_edge("generate_response", "send_response")
+    workflow.add_edge("send_response", END)
 
     return workflow.compile()

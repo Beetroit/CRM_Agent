@@ -12,7 +12,7 @@ class LangGraphSettings(BaseSettings):
     WHATSAPP_MESSAGES_QUEUE: str = "whatsapp_messages"
     WHATSAPP_RESPONSES_QUEUE: str = "whatsapp_responses"
     GOOGLE_API_KEY: str
-    INTENT_MODEL_NAME: str = "gemini-2.5-flash-lite"
+    INTENT_MODEL_NAME: str = "gemini-2.5-flash-lite-preview-06-17"
     RESPONSE_MODEL_NAME: str = "gemini-2.5-flash"
     ALLOWED_INTENTS: List[str] = ["greeting", "query", "statement", "goodbye"]
 

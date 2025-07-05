@@ -49,8 +49,10 @@ class VectorStoreService:
                 n_results=n_results,
             )
             logger.info(f"Queried vector store with text: '{query_text}'")
-            logger.info(f"Results: {results}")
-            return results.get("documents", [])
+            # The 'documents' key contains a list of lists, so we extract the first list.
+            documents = results.get("documents", [[]])[0]
+            logger.info(f"Found {len(documents)} documents.")
+            return documents
         except Exception as e:
             logger.error(f"Failed to query vector store: {e}")
             return []
