@@ -1,4 +1,6 @@
 # langgraph_app/config.py
+from typing import List
+
 from pydantic_settings import BaseSettings
 
 
@@ -10,6 +12,9 @@ class LangGraphSettings(BaseSettings):
     WHATSAPP_MESSAGES_QUEUE: str = "whatsapp_messages"
     WHATSAPP_RESPONSES_QUEUE: str = "whatsapp_responses"
     GOOGLE_API_KEY: str
+    INTENT_MODEL_NAME: str = "gemini-2.5-flash-lite"
+    RESPONSE_MODEL_NAME: str = "gemini-2.5-flash"
+    ALLOWED_INTENTS: List[str] = ["greeting", "query", "statement", "goodbye"]
 
     class Config:
         env_file = ".env"

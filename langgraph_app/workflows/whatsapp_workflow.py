@@ -38,10 +38,8 @@ def create_whatsapp_workflow(
     async def context_retrieval_node(state: WorkflowState) -> WorkflowState:
         logger.info("Retrieving context...")
         if state["intent"] == "query":
-            context_docs = await vector_store_service.query_messages(
-                state["user_input"]
-            )
-            state["context"] = "\n".join(context_docs)
+            context_docs = vector_store_service.query_messages(state["user_input"])
+            state["context"] = "\n".join([doc["content"] for doc in context_docs])
         else:
             state["context"] = None
         return state
