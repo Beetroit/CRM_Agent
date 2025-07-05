@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -173,7 +173,9 @@ class WhatsAppQueueMessage(BaseModel):
     body: Optional[str] = None
     message_type: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc).isoformat()
+    )
     webhook_type: str = "message"  # "message" or "status"
 
 

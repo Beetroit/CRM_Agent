@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 from urllib.parse import parse_qs, unquote
 
@@ -85,17 +85,19 @@ class WhatsAppService:
     @staticmethod
     def extract_message_info(webhook_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Extract relevant message information from parsed webhook data.
+        Extract and clean relevant message information from parsed webhook data.
+        Ensures all metadata values are compatible with ChromaDB.
 
         Args:
             webhook_data: Parsed webhook data dictionary
 
         Returns:
-            Dictionary containing extracted message information
+            Dictionary containing cleaned and extracted message information
         """
         webhook_type = WhatsAppService.determine_webhook_type(webhook_data)
 
-        return {
+        # Initial extraction
+        message_info = {
             "message_sid": webhook_data.get("MessageSid"),
             "sms_message_sid": webhook_data.get("SmsMessageSid"),
             "account_sid": webhook_data.get("AccountSid"),
@@ -107,21 +109,41 @@ class WhatsAppService:
             "message_type": webhook_data.get("MessageType"),
             "sms_status": webhook_data.get("SmsStatus"),
             "message_status": webhook_data.get("MessageStatus"),
-            "num_media": int(webhook_data.get("NumMedia", 0))
-            if webhook_data.get("NumMedia")
-            else 0,
-            "num_segments": int(webhook_data.get("NumSegments", 1))
-            if webhook_data.get("NumSegments")
-            else 1,
+            "num_media": webhook_data.get("NumMedia"),
+            "num_segments": webhook_data.get("NumSegments"),
             "api_version": webhook_data.get("ApiVersion"),
-            "channel_metadata": webhook_data.get("ChannelMetadata", {}),
+            "channel_metadata": webhook_data.get("ChannelMetadata"),
             "channel_prefix": webhook_data.get("ChannelPrefix"),
             "channel_install_sid": webhook_data.get("ChannelInstallSid"),
             "channel_to_address": webhook_data.get("ChannelToAddress"),
             "structured_message": webhook_data.get("StructuredMessage"),
             "webhook_type": webhook_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         }
+
+        # Clean the dictionary to make it ChromaDB compatible
+        cleaned_message_info = {}
+        for key, value in message_info.items():
+            if value is None:
+                # Replace None with a sensible default
+                if key in ["num_media", "num_segments"]:
+                    cleaned_message_info[key] = 0
+                else:
+                    # Default to empty string for other None values
+                    cleaned_message_info[key] = ""
+            elif key == "channel_metadata" and isinstance(value, dict):
+                # Serialize dicts to JSON strings
+                cleaned_message_info[key] = json.dumps(value)
+            elif key in ["num_media", "num_segments"]:
+                # Ensure numeric fields are integers
+                try:
+                    cleaned_message_info[key] = int(value)
+                except (ValueError, TypeError):
+                    cleaned_message_info[key] = 0
+            else:
+                cleaned_message_info[key] = value
+
+        return cleaned_message_info
 
     async def process_incoming_message(self, webhook_data: Dict[str, Any]) -> None:
         """
