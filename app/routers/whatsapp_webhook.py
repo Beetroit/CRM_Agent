@@ -4,9 +4,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app.config import settings
-from app.dependencies import get_producer_dependency, get_vector_store_dependency
+from app.dependencies import get_producer_dependency, get_vector_store_dependency, get_persistence_dependency
 from app.services.rabbitmq_service import AsyncRabbitMQProducer
 from app.services.vector_store_service import VectorStoreService
+from app.services.persistence_service import PersistenceService
 from app.services.whatsapp_service import WhatsAppService
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ async def handle_webhook(
     request: Request,
     rabbitmq_producer: AsyncRabbitMQProducer = Depends(get_producer_dependency),
     vector_store_service: VectorStoreService = Depends(get_vector_store_dependency),
+    persistence_service: PersistenceService = Depends(get_persistence_dependency),
 ):
     """
     Endpoint to receive and process incoming WhatsApp messages from Twilio.
@@ -53,7 +55,9 @@ async def handle_webhook(
         whatsapp_service = WhatsAppService(rabbitmq_producer, vector_store_service)
 
         # Process the webhook
-        twiml_response = await whatsapp_service.handle_webhook(raw_data)
+        twiml_response = await whatsapp_service.handle_webhook(
+            raw_data, persistence_service
+        )
 
         return Response(content=twiml_response, media_type="application/xml")
 

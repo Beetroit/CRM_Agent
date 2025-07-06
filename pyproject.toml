@@ -17,6 +17,9 @@ chromadb = "^1.0.15"
 langgraph = "^0.5.1"
 langchain-google-genai = "^2.1.6"
 google-genai = "^1.24.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.41"}
+asyncpg = "^0.30.0"
+aiosqlite = "^0.21.0"
 
 
 [build-system]

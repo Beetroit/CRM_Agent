@@ -2,6 +2,8 @@
 import asyncio
 import logging
 
+from app.services.database import AsyncSessionLocal
+from app.services.persistence_service import PersistenceService
 from langgraph_app.config import LangGraphSettings
 from langgraph_app.services.llm_service import LLMService
 from langgraph_app.services.rabbitmq_consumer_service import AsyncRabbitMQConsumer
@@ -25,15 +27,22 @@ async def main():
     vector_store_service = VectorStoreService(settings)
     whatsapp_response_tool = WhatsAppResponseTool(settings)
 
-    # Create the workflow
-    whatsapp_workflow = create_whatsapp_workflow(
-        llm_service=llm_service,
-        vector_store_service=vector_store_service,
-        whatsapp_response_tool=whatsapp_response_tool,
-    )
+    # Initialize Persistence Service for LangGraph
+    # This will use a new session for the consumer's lifecycle
+    async with AsyncSessionLocal() as session:
+        persistence_service = PersistenceService(session)
+        logger.info("Persistence service initialized for LangGraph consumer.")
 
-    logger.info("Starting LangGraph RabbitMQ consumer...")
-    await rabbitmq_consumer_service.start_consuming(whatsapp_workflow)
+        # Create the workflow
+        whatsapp_workflow = create_whatsapp_workflow(
+            llm_service=llm_service,
+            vector_store_service=vector_store_service,
+            whatsapp_response_tool=whatsapp_response_tool,
+            persistence_service=persistence_service,  # Pass persistence_service
+        )
+
+        logger.info("Starting LangGraph RabbitMQ consumer...")
+        await rabbitmq_consumer_service.start_consuming(whatsapp_workflow)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 from urllib.parse import parse_qs, unquote
 
-from app.models.whatsapp import WhatsAppQueueMessage
+from app.models.whatsapp import WhatsAppQueueMessage, WhatsAppWebhook
+from app.services.persistence_service import PersistenceService
 from app.services.rabbitmq_service import AsyncRabbitMQProducer
 from app.services.vector_store_service import VectorStoreService
 
@@ -145,14 +146,21 @@ class WhatsAppService:
 
         return cleaned_message_info
 
-    async def process_incoming_message(self, webhook_data: Dict[str, Any]) -> None:
+    async def process_incoming_message(
+        self, webhook_data: Dict[str, Any], persistence_service: PersistenceService
+    ) -> None:
         """
         Process incoming WhatsApp message and queue it for further processing.
 
         Args:
             webhook_data: Parsed webhook data dictionary
+            persistence_service: The service for database operations.
         """
         try:
+            # Use the Pydantic model to parse and validate the webhook data
+            # This will automatically handle the 'OriginalRepliedMessageSid' alias
+            parsed_webhook = WhatsAppWebhook(**webhook_data)
+
             message_info = self.extract_message_info(webhook_data)
             webhook_type = message_info["webhook_type"]
 
@@ -166,9 +174,36 @@ class WhatsAppService:
                     f"Processing message from {message_info['wa_id']}: {message_info['body']}"
                 )
 
-                # Create queue message
-                queue_message = WhatsAppQueueMessage(
+                # Get or create conversation
+                conversation = await persistence_service.get_or_create_conversation(
+                    whatsapp_user_id=message_info["wa_id"]
+                )
+                # Eagerly load the conversation ID to prevent access after await
+                conversation_id = conversation.id
+
+                # Save message to PostgreSQL
+                saved_message = await persistence_service.save_message(
                     message_sid=message_info["message_sid"],
+                    conversation_id=conversation_id,
+                    sender_id=message_info["wa_id"],
+                    sender_type="user",
+                    content=message_info["body"],
+                    timestamp=datetime.fromisoformat(message_info["timestamp"]),
+                    raw_metadata=webhook_data,  # Store the original raw webhook data
+                    parent_message_sid=parsed_webhook.original_replied_message_sid,
+                )
+                # Eagerly load the message ID to prevent access after await
+                saved_message_id = saved_message.id
+                logger.info(
+                    f"Message '{message_info['message_sid']}' saved to PostgreSQL with ID: {saved_message_id}"
+                )
+
+                # Create queue message, passing the database message ID
+                queue_message = WhatsAppQueueMessage(
+                    message_id=saved_message_id,  # Use the local variable
+                    message_sid=message_info[
+                        "message_sid"
+                    ],  # Keep Twilio SID for reference
                     from_number=message_info["from_number"],
                     to_number=message_info["to_number"],
                     wa_id=message_info["wa_id"],
@@ -177,6 +212,7 @@ class WhatsAppService:
                     message_type=message_info["message_type"],
                     metadata=message_info,
                     webhook_type=webhook_type,
+                    conversation_id=conversation_id,  # Use the local variable
                 )
 
                 # Queue the message for processing
@@ -185,12 +221,12 @@ class WhatsAppService:
                 )
 
                 logger.info(
-                    f"Message queued successfully: {message_info['message_sid']}"
+                    f"Message queued successfully: {message_info['message_sid']} (DB ID: {saved_message_id})"
                 )
 
                 # Add message to vector store
                 await self.vector_store_service.add_message(
-                    message_id=message_info["message_sid"],
+                    message_id=str(saved_message_id),  # Use local variable
                     content=message_info["body"],
                     metadata=message_info,
                 )
@@ -232,12 +268,15 @@ class WhatsAppService:
             logger.error(f"Failed to process incoming webhook: {e}")
             raise
 
-    async def handle_webhook(self, raw_data: bytes) -> str:
+    async def handle_webhook(
+        self, raw_data: bytes, persistence_service: PersistenceService
+    ) -> str:
         """
         Main webhook handler that orchestrates the entire process.
 
         Args:
             raw_data: Raw webhook data from Twilio
+            persistence_service: The service for database operations.
 
         Returns:
             TwiML response string
@@ -252,7 +291,7 @@ class WhatsAppService:
             )
 
             # Process the webhook
-            await self.process_incoming_message(webhook_data)
+            await self.process_incoming_message(webhook_data, persistence_service)
 
             # Return TwiML response with a reply
             from twilio.twiml.messaging_response import MessagingResponse
