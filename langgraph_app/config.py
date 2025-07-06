@@ -11,6 +11,14 @@ class LangGraphSettings(BaseSettings):
     RABBITMQ_PASSWORD: str = "guest"
     WHATSAPP_MESSAGES_QUEUE: str = "whatsapp_messages"
     WHATSAPP_RESPONSES_QUEUE: str = "whatsapp_responses"
+
+    # DLQ and Retry settings for incoming requests
+    REQUESTS_DLX_NAME: str = "requests_dlx"
+    REQUESTS_RETRY_QUEUE_NAME: str = "requests_retry_queue"
+    REQUESTS_PARKING_LOT_QUEUE_NAME: str = "requests_parking_lot"
+    RABBITMQ_MAX_RETRIES: int = 3
+    RABBITMQ_RETRY_DELAY_MS: int = 5000
+
     GOOGLE_API_KEY: str
     INTENT_MODEL_NAME: str = "gemini-2.5-flash-lite-preview-06-17"
     RESPONSE_MODEL_NAME: str = "gemini-2.5-flash"

@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     RABBITMQ_QUEUE_NAME: str = "whatsapp_messages"
     WHATSAPP_RESPONSES_QUEUE: str = "whatsapp_responses"
 
+    # DLQ and Retry settings for outgoing responses
+    RESPONSES_DLX_NAME: str = "responses_dlx"
+    RESPONSES_RETRY_QUEUE_NAME: str = "responses_retry_queue"
+    RESPONSES_PARKING_LOT_QUEUE_NAME: str = "responses_parking_lot"
+    RABBITMQ_MAX_RETRIES: int = 3
+    RABBITMQ_RETRY_DELAY_MS: int = 5000
+
     WHATSAPP_VERIFY_TOKEN: str
 
     TWILIO_ACCOUNT_SID: str
