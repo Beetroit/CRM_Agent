@@ -1,6 +1,5 @@
 # langgraph_app/workflows/whatsapp_workflow.py
 import logging
-import uuid
 from typing import List, Optional, TypedDict
 from uuid import UUID
 
@@ -34,13 +33,6 @@ def create_whatsapp_workflow(
 ):
     async def start_node(state: WorkflowState) -> WorkflowState:
         logger.info("Starting workflow...")
-        # In a real scenario, you'd get conversation_id from the incoming message
-        # For now, we'll assume it's passed or derived.
-        # For the purpose of this example, let's assume we can get the conversation_id
-        # from the message_id by querying the persistence service.
-        # This might require an additional method in PersistenceService or
-        # passing conversation_id directly from the consumer.
-        # For now, we'll leave it as optional and handle it in context_retrieval.
         return state
 
     async def classify_intent_node(state: WorkflowState) -> WorkflowState:
@@ -52,23 +44,20 @@ def create_whatsapp_workflow(
     async def context_retrieval_node(state: WorkflowState) -> WorkflowState:
         logger.info("Retrieving context...")
 
-        # First, get the conversation_id from the message_id
-        # This assumes the message has already been saved by the webhook handler
-        message_obj = await persistence_service.session.get(
-            Message, UUID(state["message_id"])
-        )
-        if message_obj and message_obj.conversation_id:
-            state["conversation_id"] = message_obj.conversation_id
-        else:
+        # The conversation_id is now passed directly into the state.
+        # We can convert it to a UUID object for use.
+        try:
+            conversation_id = UUID(state["conversation_id"])
+        except (ValueError, TypeError):
             logger.warning(
-                f"Could not find conversation_id for message_id: {state['message_id']}"
+                f"Invalid or missing conversation_id in state: {state.get('conversation_id')}"
             )
             state["context"] = "No conversation history available."
             return state
 
         # Retrieve conversation history from PostgreSQL
         history: List[Message] = await persistence_service.get_conversation_history(
-            conversation_id=state["conversation_id"], limit=10
+            conversation_id=conversation_id, limit=10
         )  # Limit to last 10 messages for context
 
         # Format history for LLM
@@ -86,9 +75,7 @@ def create_whatsapp_workflow(
 
         if state["intent"] == "query":
             # Still use vector store for semantic search if intent is query
-            context_docs = await vector_store_service.query_messages(
-                state["user_input"]
-            )
+            context_docs = vector_store_service.query_messages(state["user_input"])
             print(f"Retrieved vector store documents: {context_docs}")
             # Join the document content, ensuring robust checking for valid docs
             vector_context_parts = [
@@ -131,7 +118,9 @@ def create_whatsapp_workflow(
         await whatsapp_response_tool.publish_message(
             to_number=state["from_number"],
             response_text=state["generated_response"],
-            original_message_id=UUID(state["message_id"]),  # Pass the user's message UUID
+            original_message_id=UUID(
+                state["message_id"]
+            ),  # Pass the user's message UUID
             conversation_id=state["conversation_id"],  # Pass the conversation UUID
         )
         logger.info(f"Published message to queue for {state['from_number']}")

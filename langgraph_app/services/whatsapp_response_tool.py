@@ -1,6 +1,7 @@
 # langgraph_app/services/whatsapp_response_tool.py
 import json
 import logging
+from uuid import UUID
 
 import aio_pika
 from langchain_core.tools import tool
@@ -31,15 +32,21 @@ class WhatsAppResponseTool:
             raise
 
     async def publish_message(
-        self, to_number: str, response_text: str, original_message_sid: str
+        self,
+        to_number: str,
+        response_text: str,
+        original_message_id: UUID,
+        conversation_id: UUID,
     ):
         if not self.channel or self.channel.is_closed:
             await self.connect()
 
+        # Prepare the message body using the new model structure
         message_body = {
             "to_number": to_number,
             "response_text": response_text,
-            "original_message_sid": original_message_sid,
+            "original_message_id": str(original_message_id),
+            "conversation_id": str(conversation_id),
         }
 
         try:
@@ -65,11 +72,16 @@ class WhatsAppResponseTool:
 
 @tool
 async def send_whatsapp_response(
-    to_number: str, response_text: str, original_message_sid: str
+    to_number: str,
+    response_text: str,
+    original_message_id: UUID,
+    conversation_id: UUID,
 ):
     """Sends a response back to the user via WhatsApp."""
     settings = LangGraphSettings()
     response_tool = WhatsAppResponseTool(settings)
-    await response_tool.publish_message(to_number, response_text, original_message_sid)
+    await response_tool.publish_message(
+        to_number, response_text, original_message_id, conversation_id
+    )
     await response_tool.close()
     return "Response sent to WhatsApp queue."

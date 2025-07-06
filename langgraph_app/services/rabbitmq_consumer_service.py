@@ -43,12 +43,17 @@ class AsyncRabbitMQConsumer:
 
                 # Prepare the initial state for the LangGraph workflow
                 initial_state = {
-                    "message_id": message_data.get("message_sid"),
+                    "message_id": message_data.get(
+                        "message_id"
+                    ),  # Use the database UUID
                     "user_input": message_data.get("body"),
                     "from_number": message_data.get("from_number"),
                     "intent": "",  # Will be classified by the workflow
                     "context": None,
                     "generated_response": "",
+                    "conversation_id": message_data.get(
+                        "conversation_id"
+                    ),  # Pass conversation_id directly
                 }
 
                 # Invoke the LangGraph workflow with the prepared state
