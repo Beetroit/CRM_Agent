@@ -1,7 +1,6 @@
 import logging
 
 import chromadb
-from chromadb.utils import embedding_functions
 
 logger = logging.getLogger(__name__)
 
@@ -11,13 +10,6 @@ class VectorStoreService:
         self.client = None
         self.collection = None
         self.collection_name = collection_name
-        # Default embedding function (e.g., Sentence Transformers all-MiniLM-L6-v2)
-        # For production, consider a more robust or cloud-based embedding service
-        # self.embedding_function = (
-        #     embedding_functions.GoogleGenerativeAiEmbeddingFunction(
-        #         model_name="all-MiniLM-L6-v2"
-        #     )
-        # )
 
     async def initialize(self):
         """Initializes the ChromaDB client and gets/creates the collection."""
@@ -25,7 +17,7 @@ class VectorStoreService:
             # Use a persistent client for local storage
             self.client = chromadb.PersistentClient(path="./chroma_db")
             self.collection = self.client.get_or_create_collection(
-                name=self.collection_name  # , embedding_function=self.embedding_function
+                name=self.collection_name
             )
             logger.info(
                 f"ChromaDB client initialized and collection '{self.collection_name}' ready."

@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -27,6 +28,7 @@ async def init_db():
     logger.info("Database initialization complete.")
 
 
+@asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency that provides a database session."""
     async with AsyncSessionLocal() as session:
