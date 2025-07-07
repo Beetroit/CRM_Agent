@@ -91,7 +91,7 @@ class AsyncRabbitMQConsumer:
 
         # Declare the Dead Letter Exchange
         dlx = await self.channel.declare_exchange(
-            self.settings.REQUESTS_DLX_NAME, aio_pika.ExchangeType.DIRECT
+            self.settings.REQUESTS_DLX_NAME, aio_pika.ExchangeType.DIRECT, durable=True
         )
 
         # Declare the Parking Lot Queue
@@ -131,11 +131,31 @@ class AsyncRabbitMQConsumer:
             self.channel = await self.connection.channel()
             await self.channel.set_qos(prefetch_count=1)
 
-            await self.channel.queue_delete(self.settings.WHATSAPP_MESSAGES_QUEUE)
-            
+            try:
+                await self.channel.queue_delete(self.settings.WHATSAPP_MESSAGES_QUEUE)
+                logger.info(
+                    f"Deleted conflicting queue: {self.settings.WHATSAPP_MESSAGES_QUEUE}"
+                )
+            except Exception as delete_e:
+                logger.warning(
+                    f"Could not delete queue {self.settings.WHATSAPP_MESSAGES_QUEUE}: {delete_e}"
+                )
+
+            try:
+                await self.channel.queue_delete(self.settings.WHATSAPP_RESPONSES_QUEUE)
+                logger.info(
+                    f"Deleted conflicting queue: {self.settings.WHATSAPP_RESPONSES_QUEUE}"
+                )
+            except Exception as delete_e:
+                logger.warning(
+                    f"Could not delete queue {self.settings.WHATSAPP_RESPONSES_QUEUE}: {delete_e}"
+                )
+
             # Re-declare all exchanges and queues on the new channel
             dlx = await self.channel.declare_exchange(
-                self.settings.REQUESTS_DLX_NAME, aio_pika.ExchangeType.DIRECT
+                self.settings.REQUESTS_DLX_NAME,
+                aio_pika.ExchangeType.DIRECT,
+                durable=True,
             )
             parking_lot_queue = await self.channel.declare_queue(
                 self.settings.REQUESTS_PARKING_LOT_QUEUE_NAME, durable=True
@@ -149,7 +169,9 @@ class AsyncRabbitMQConsumer:
                     "x-message-ttl": self.settings.RABBITMQ_RETRY_DELAY_MS,
                 },
             )
-            await retry_queue.bind(dlx, routing_key=self.settings.REQUESTS_RETRY_QUEUE_NAME)
+            await retry_queue.bind(
+                dlx, routing_key=self.settings.REQUESTS_RETRY_QUEUE_NAME
+            )
 
             queue = await self.channel.declare_queue(
                 self.settings.WHATSAPP_MESSAGES_QUEUE,

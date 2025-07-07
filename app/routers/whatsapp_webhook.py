@@ -4,10 +4,14 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app.config import settings
-from app.dependencies import get_producer_dependency, get_vector_store_dependency, get_persistence_dependency
+from app.dependencies import (
+    get_persistence_dependency,
+    get_producer_dependency,
+    get_vector_store_dependency,
+)
+from app.services.persistence_service import PersistenceService
 from app.services.rabbitmq_service import AsyncRabbitMQProducer
 from app.services.vector_store_service import VectorStoreService
-from app.services.persistence_service import PersistenceService
 from app.services.whatsapp_service import WhatsAppService
 
 logger = logging.getLogger(__name__)
