@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# VSCode
+.vscode
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+*.swp
+*.swo
+*.swn
+
+# Databases
+whatsapp_chat_db
+chroma_db/
+
+# Documents
+RevSprint.docx
+
+# Test files
+test_google.py
+test.ipynb
+test.py
+
+# Poetry
+poetry.lock
+
+# Other
+.DS_Store
