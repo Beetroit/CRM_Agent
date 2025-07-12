@@ -42,6 +42,7 @@ class Message(Base):
     sender_id: str = Column(String(255), nullable=False)
     sender_type: str = Column(String(50), nullable=False)  # 'user' or 'bot'
     content: Optional[str] = Column(Text, nullable=True)
+    intent: Optional[str] = Column(String(100), nullable=True)
     timestamp: datetime = Column(DateTime(timezone=True), nullable=False)
     raw_metadata: Optional[dict] = Column(JSON, nullable=True)
     created_at: datetime = Column(

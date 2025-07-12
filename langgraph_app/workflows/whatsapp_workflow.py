@@ -39,6 +39,18 @@ def create_whatsapp_workflow(
         logger.info("Classifying intent...")
         intent = await llm_service.classify_intent(state["user_input"])
         state["intent"] = intent
+
+        # Update the intent in the database
+        try:
+            message_id = UUID(state["message_id"])
+            await persistence_service.update_message_intent(
+                message_id=message_id, intent=intent
+            )
+        except (ValueError, TypeError) as e:
+            logger.error(
+                f"Could not update intent for message_id {state.get('message_id')}: {e}"
+            )
+
         return state
 
     async def context_retrieval_node(state: WorkflowState) -> WorkflowState:

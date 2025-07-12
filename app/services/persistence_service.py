@@ -75,6 +75,23 @@ class PersistenceService:
         logger.info(f"Message {message_sid} saved to conversation {conversation_id}.")
         return message
 
+    async def update_message_intent(
+        self, message_id: UUID, intent: str
+    ) -> Optional[Message]:
+        """
+        Updates the intent of a specific message.
+        """
+        message = await self.session.get(Message, message_id)
+        if message:
+            message.intent = intent
+            await self.session.commit()
+            await self.session.refresh(message)
+            logger.info(f"Updated intent for message {message_id} to '{intent}'.")
+            return message
+        else:
+            logger.warning(f"Message with ID {message_id} not found for intent update.")
+            return None
+
     async def get_conversation_history(
         self, conversation_id: UUID, limit: int = 20
     ) -> List[Message]:
