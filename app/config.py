@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str
     TWILIO_PHONE_NUMBER: str
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///whatsapp_chat_db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///whatsapp_chat.db"
 
     # DATABASE_URL: str = (
     #     "postgresql+asyncpg://postgres:postgres@localhost:5432/whatsapp_chat_db"

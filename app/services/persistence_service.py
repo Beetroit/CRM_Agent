@@ -114,7 +114,7 @@ class PersistenceService:
             message_sid=bot_message_sid,
             conversation_id=conversation_id,
             parent_message_id=parent_message_id,
-            sender_id="bot",  # Assuming 'bot' as the sender_id for bot messages
+            sender_id="bot",
             sender_type="bot",
             content=content,
             timestamp=datetime.now(),

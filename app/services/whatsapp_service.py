@@ -240,7 +240,6 @@ class WhatsAppService:
                 )
 
                 # Optionally queue status updates to a different queue
-                # You might want to track delivery status in your system
                 status_message = WhatsAppQueueMessage(
                     message_sid=message_info["message_sid"],
                     from_number=message_info["from_number"],

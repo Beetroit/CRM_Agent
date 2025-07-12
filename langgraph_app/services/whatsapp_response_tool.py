@@ -41,6 +41,9 @@ class WhatsAppResponseTool:
         if not self.channel or self.channel.is_closed:
             await self.connect()
 
+        # Declare the full topology to ensure it exists
+        await self._declare_topology()
+
         # Prepare the message body using the new model structure
         message_body = {
             "to_number": to_number,
@@ -62,6 +65,43 @@ class WhatsAppResponseTool:
             )
         except Exception as e:
             logger.error(f"Failed to publish message: {e}")
+
+    async def _declare_topology(self):
+        """Declares all the necessary queues and exchanges for the response tool."""
+        logger.info("Declaring RabbitMQ topology for WhatsAppResponseTool...")
+
+        # Declare the Dead Letter Exchange for responses
+        dlx = await self.channel.declare_exchange(
+            self.settings.RESPONSES_DLX_NAME, aio_pika.ExchangeType.DIRECT, durable=True
+        )
+
+        # Declare the Parking Lot Queue for responses
+        await self.channel.declare_queue(
+            self.settings.RESPONSES_PARKING_LOT_QUEUE_NAME, durable=True
+        )
+
+        # Declare the Retry Queue for responses
+        retry_queue = await self.channel.declare_queue(
+            self.settings.RESPONSES_RETRY_QUEUE_NAME,
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "",  # Default exchange
+                "x-dead-letter-routing-key": self.settings.WHATSAPP_RESPONSES_QUEUE,
+                "x-message-ttl": self.settings.RABBITMQ_RETRY_DELAY_MS,
+            },
+        )
+        await retry_queue.bind(dlx, routing_key=self.settings.RESPONSES_RETRY_QUEUE_NAME)
+
+        # Declare the main responses queue with DLX configured
+        await self.channel.declare_queue(
+            self.settings.WHATSAPP_RESPONSES_QUEUE,
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": self.settings.RESPONSES_DLX_NAME,
+                "x-dead-letter-routing-key": self.settings.RESPONSES_RETRY_QUEUE_NAME,
+            },
+        )
+        logger.info("WhatsAppResponseTool topology declared successfully.")
 
     async def close(self):
         if self.channel and not self.channel.is_closed:

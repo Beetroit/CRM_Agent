@@ -16,6 +16,12 @@ class LangGraphSettings(BaseSettings):
     REQUESTS_DLX_NAME: str = "requests_dlx"
     REQUESTS_RETRY_QUEUE_NAME: str = "requests_retry_queue"
     REQUESTS_PARKING_LOT_QUEUE_NAME: str = "requests_parking_lot"
+    
+    # DLQ and Retry settings for outgoing responses
+    RESPONSES_DLX_NAME: str = "responses_dlx"
+    RESPONSES_RETRY_QUEUE_NAME: str = "responses_retry_queue"
+    RESPONSES_PARKING_LOT_QUEUE_NAME: str = "responses_parking_lot"
+
     RABBITMQ_MAX_RETRIES: int = 3
     RABBITMQ_RETRY_DELAY_MS: int = 5000
 
